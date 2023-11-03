@@ -12,6 +12,7 @@ class RosstatSpider(scrapy.Spider):
         if not os.path.exists(folder_name):
             os.mkdir(folder_name)
             logger.debug(f"Creating folder {folder_name}")
+
     def __init__(self, *args, **kwargs):
         self.url = "https://rosstat.gov.ru/statistic"
         self.domain = "https://rosstat.gov.ru"
@@ -28,6 +29,7 @@ class RosstatSpider(scrapy.Spider):
         logger.info("Start parsing rosstat")
         items = response.css('.sidebar__item')
         logger.debug(f"the {len(items)} folders")
+
         for item in items:
             link = item.css('a::attr(href)').extract_first()
             name = item.css("*::text").extract()[1]
@@ -35,7 +37,7 @@ class RosstatSpider(scrapy.Spider):
 
     def get_field(self, response, *args, **kwargs):
         folder_name = kwargs.get("folder_name")
-        logger.debug(f"getting the fields of the folders {folder_name}")
+        logger.info(f"getting the fields of the folders {folder_name}")
         items = response.css('.sidebar__item')
         logger.debug(f"the {len(items)} folders")
         for item in items:
@@ -46,8 +48,12 @@ class RosstatSpider(scrapy.Spider):
         folder_name = kwargs.get("folder_name")
         logger.debug(f"getting the links of the xlsx files from {response.url} of the folder {folder_name}")
         xlsx_links = response.css('a[href$=".xlsx"]::attr(href)').getall()
+        rar_links = response.css('a[href$=".rar"]::attr(href)').getall()
 
         for link in xlsx_links:
+            yield scrapy.Request(self.domain + link, self.save_file, cb_kwargs={"folder_name": folder_name})
+
+        for link in rar_links:
             yield scrapy.Request(self.domain + link, self.save_file, cb_kwargs={"folder_name": folder_name})
 
     def save_file(self, response, *args, **kwargs):
